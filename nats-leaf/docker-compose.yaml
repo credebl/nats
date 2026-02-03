@@ -1,0 +1,40 @@
+services:
+  leaf-1a:
+    image: nats:2.12.4
+    container_name: nats-leaf-1a
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./leaf-1a.conf:/etc/nats/nats.conf
+      - ./jetstream_1a_leaf:/data/jetstream
+    network_mode: host
+    restart: unless-stopped
+
+  leaf-1b:
+    image: nats:2.12.4
+    container_name: nats-leaf-1b
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./leaf-1b.conf:/etc/nats/nats.conf
+      - ./jetstream_1b_leaf:/data/jetstream
+    network_mode: host
+    restart: unless-stopped
+
+  leaf-2a:
+    image: nats:2.12.4
+    container_name: nats-leaf-2a
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./leaf-2a.conf:/etc/nats/nats.conf
+      - ./jetstream_2a_leaf:/data/jetstream
+    network_mode: host
+    restart: unless-stopped
+
+  leaf-2b:
+    image: nats:2.12.4
+    container_name: nats-leaf-2b
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./leaf-2b.conf:/etc/nats/nats.conf
+      - ./jetstream_2b_leaf:/data/jetstream
+    network_mode: host
+    restart: unless-stopped

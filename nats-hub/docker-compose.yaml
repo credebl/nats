@@ -1,6 +1,6 @@
 services:
   hub:
-    image: nats:latest
+    image: nats:2.12.4
     container_name: nats-hub
     command: ["-c", "/etc/nats/nats.conf"]
     volumes:
@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
 
   hub-2:
-    image: nats:latest
+    image: nats:2.12.4
     container_name: nats-hub-2
     command: ["-c", "/etc/nats/nats.conf"]
     volumes:
@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
 
   hub-3:
-    image: nats:latest
+    image: nats:2.12.4
     container_name: nats-hub-3
     command: ["-c", "/etc/nats/nats.conf"]
     volumes:
