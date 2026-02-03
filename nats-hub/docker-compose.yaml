@@ -1,0 +1,30 @@
+services:
+  hub:
+    image: nats:latest
+    container_name: nats-hub
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./hub.conf:/etc/nats/nats.conf
+      - ./jetstream_store:/data/jetstream
+    network_mode: host
+    restart: unless-stopped
+
+  hub-2:
+    image: nats:latest
+    container_name: nats-hub-2
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./hub-2.conf:/etc/nats/nats.conf
+      - ./jetstream_store_2:/data/jetstream
+    network_mode: host
+    restart: unless-stopped
+
+  hub-3:
+    image: nats:latest
+    container_name: nats-hub-3
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./hub-3.conf:/etc/nats/nats.conf
+      - ./jetstream_store_3:/data/jetstream
+    network_mode: host
+    restart: unless-stopped
