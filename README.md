@@ -144,6 +144,9 @@ nsc push -A
 
 ---
 
+> **⚠️ Important: Backup NSC Server**
+> Always keep a backup of the NSC server data (typically `~/.nsc` and `~/.local/share/nats/nsc`). If the NSC server is lost or crashes, you will **not** be able to create or remove users/accounts. However, the existing NATS infrastructure (hub + leaf nodes) will continue to work fine since they operate on already-issued JWTs.
+
 ## Leaf Node User Management
 
 ### Create a User for a Leaf Node
