@@ -23,6 +23,49 @@ This setup provides a high-availability NATS cluster with IP-based communication
 
 - Docker and Docker Compose installed
 
+## NATS Security Model: Operator, Account & User
+
+NATS uses a **3-tier JWT-based security hierarchy** managed by NSC:
+
+```
+Operator
+└── Account (e.g., hub-account, leaf-1-account)
+    └── User (e.g., exec-user, main-user)
+```
+
+- **Operator** — the root trust anchor. A single operator signs and governs all accounts. The operator JWT is embedded in every NATS server config to establish trust. Created once during initial setup.
+
+- **Account** — an isolated namespace within the operator. Subjects, streams, and permissions are scoped per account. Each leaf node gets its own account so it is fully isolated from other leaves. Accounts are pushed to the hub resolver so the hub can validate JWTs.
+
+- **User** — a client identity within an account. A user gets a `.creds` file (JWT + private key) used to authenticate against the NATS server. Per leaf node, two users are created:
+  - **exec user** — authenticates the leaf NATS server itself when connecting outbound to the hub
+  - **main user** — used by the leaf side services running to publish/subscribe on the leaf NATS server
+
+---
+
+## NSC & NATS CLI Setup
+
+### Install NATS CLI
+
+```bash
+go install github.com/nats-io/natscli/nats@latest
+```
+
+### Install NSC CLI
+
+```bash
+curl -L https://raw.githubusercontent.com/nats-io/nsc/master/install.py | python
+echo 'export PATH="$PATH:/home/sahil-kamble/.nsccli/bin"' >> $HOME/.bashrc
+source $HOME/.bashrc
+```
+
+Verify installations:
+```bash
+nats --version
+nsc --version
+```
+
+---
 ## Configuration
 
 ```bash
@@ -37,23 +80,111 @@ HUB_HOST_3=<hub-node-3-ip>
 LEAF_HOST_1=<leaf-node-1-ip>
 LEAF_HOST_2=<leaf-node-2-ip>
 ```
+## Hub Security Setup (NSC-based JWT Auth)
 
-### Security Configuration
-Credentials in configuration files:
-- Hub users: `hub_user`, `exec_user`, `sys`
-- Leaf users: `leaf_user`, `sys`
-- Route authentication: `route_user`
+### Step 1: Get Hub NATS URL
 
-**⚠️ Important**: Change default passwords before production deployment!
+Get the URL of any one hub node and update .env file:
 
-## Deployment
+```bash
+# Direct node URL
+NATS_URL=nats://<hub-node-1-ip>:4222
 
-### Hub Deployment 
+# Or via load balancer (VPC-internal only)
+NATS_URL=nats://<load-balancer-ip>:4222
+```
+
+Add to `.env`:
+```env
+NATS_URL=nats://<hub-node-ip>:4222
+OPERATOR_NAME=myoperator
+```
+
+### Step 2: Run Initial Hub Setup
+
+```bash
+cd setup
+./setup-nats.sh
+```
+
+This creates the operator, system account, and initial accounts/users.
+### Step 3: Update Hub NATS Config
+
+After running `setup.sh`, copy the following blocks from the generated `resolver.conf` into each of the 3 hub node config files (`nats-hub-1.conf`, `nats-hub-2.conf`, `nats-hub-3.conf`):
+
+```
+operator: <operator-jwt>
+
+system_account: <system-id>
+
+resolver_preload: {
+  <system-id>: <system-jwt>
+  ...
+}
+```
+
+> Reference the `nats.config` file in the repo for the exact placement of these blocks.
+
+Repeat for all 3 hub node config files.
+
+### Step 4: Start Hub Nodes
 
 ```bash
 cd nats/hub
 docker-compose up -d
 ```
+
+### Step 5: Push Accounts to Hub
+
+After hub nodes are running, push all accounts and users from the NSC server:
+
+```bash
+nsc push -A
+```
+
+---
+
+## Leaf Node User Management
+
+### Create a User for a Leaf Node
+
+Use the `manage-user.sh` script. When prompted, choose **create**:
+
+```bash
+./manage-user.sh
+# Select: create
+# Provide: leaf node name (e.g., leaf_blr)
+```
+
+This creates **two users** per leaf node:
+- **exec_leaf_blr user** — used for connecting the leaf node to the hub
+- **leaf_blr user** — used by the verifier service on the leaf
+
+### Push New Accounts to Hub
+
+After creating a user, push to hub before deploying the leaf:
+
+```bash
+nsc push -A
+```
+
+### Get Account JWT and Account ID for Leaf Config
+
+After pushing, retrieve the account JWT and account ID from the NSC-generated files under nats username folder and update the leaf node's NATS config.
+
+Update the leaf node config with:
+```
+operator: <operator-jwt>
+system_account: <system-account-public-key>
+resolver_preload: {
+  <account-id>: <account-jwt>
+}
+```
+
+### User Credentials for Leaf
+
+- **leaf_exec user creds** → used in leaf node config to connect to hub
+- **leaf main user creds** → used by the service connected to the leaf NATS server
 
 ### Leaf Deployment
 ```bash
@@ -61,26 +192,86 @@ cd nats/leaf
 docker compose up -d
 ```
 
+### Remove a User
+
+```bash
+./manage-user.sh
+# Select: remove
+# Provide: leaf node name to remove
+```
+
+After removal, push changes to hub:
+```bash
+nsc push -A
+```
+
+---
+
+## Deployment
+
 ### Verify Deployment
 ```bash
 # Check container status
 docker ps
 
-# Check logs
-docker logs nats-hub
+# Check logs for hub
+docker logs nats-hub-1
+docker logs nats-hub-2
+docker logs nats-hub-3
+
+# Check logs for hub
 docker logs nats-leaf-1a
+docker logs nats-leaf-1b
 ```
 
 ## Testing
 
+### NATS Context Setup (using creds file)
+
+Before running any NATS CLI commands, save a context with your creds file so you don't need to pass `--server` and `--creds` every time.
+
 ### NATS Box Setup
 
-#### For Hub Server 
+#### For Hub Server
 ```bash
 docker run --rm -it --network=host natsio/nats-box
 ```
 
-#### For Leaf Server 
+#### For Leaf Server
+```bash
+docker run --rm -it --network=host natsio/nats-box
+```
+
+#### Hub context
+```bash
+nats context save hub \
+  --server=nats://<hub-node-ip>:4222 \
+  --creds=<path-to-exec-user.creds> \
+  --description="hub server exec user"
+```
+
+#### Leaf context
+```bash
+nats context save leaf-1 \
+  --server=nats://<leaf-node-ip>:4225 \
+  --creds=<path-to-leaf-main-user.creds> \
+  --description="leaf-1 main user"
+```
+
+Use a saved context with any command:
+```bash
+nats --context hub stream ls
+nats --context leaf-1 stream ls
+```
+
+### NATS Box Setup
+
+#### For Hub Server
+```bash
+docker run --rm -it --network=host natsio/nats-box
+```
+
+#### For Leaf Server
 ```bash
 docker run --rm -it --network=host natsio/nats-box
 ```
@@ -89,38 +280,22 @@ docker run --rm -it --network=host natsio/nats-box
 
 #### Create Stream on Hub
 ```bash
-nats stream add -s nats://hub_user:hub_password@nats-hub:4222
+nats --context hub stream add
 ```
+
 #### Create Stream on Leaf
 ```bash
-nats stream add -s nats://leaf_user:leaf_password@nats-leaf:4225
+nats --context leaf-1 stream add
 ```
 
 #### List Streams on Hub
 ```bash
-nats stream ls -s nats://hub_user:hub_password@nats-hub:4222
+nats --context hub stream ls
 ```
 
 #### List Streams on Leaf
 ```bash
-nats stream ls -s nats://leaf_user:leaf_password@nats-leaf:4225
-```
-
-### Aggregate Stream Creation
-
-#### Create Aggregate Stream on Hub (Important: Configure subjects)
-```bash
-# Create aggregate stream with source and subjects
-nats stream add aggregate --source leaf_stream -s nats://hub_user:hub_password@nats-hub:4222
-```
-
-### Message Publishing
-
-#### Publish Messages from Leaf (Important: Use subject patterns)
-```bash
-# Correct: Use subject patterns that match stream configuration
-nats pub leaf_stream.test "hello test" --count 10 -s nats://leaf_user:leaf_password@nats-leaf:4225
-# Note: leaf_stream is configured to listen to "leaf_stream.*" pattern
+nats --context leaf-1 stream ls
 ```
 
 ## Monitoring
@@ -128,9 +303,7 @@ nats pub leaf_stream.test "hello test" --count 10 -s nats://leaf_user:leaf_passw
 ### Stream report
 ```bash
 # Check stream report on hub, that messages are getting in hub aggregate stream
-nats stream report -s nats://hub_user:hub_password@nats-hub:4222
-
-# Message Flow: leaf_stream (leaf) → aggregate stream (hub)
+nats --context hub stream report
 ```
 
 ### HTTP Monitoring Endpoints
@@ -149,40 +322,6 @@ curl -s http://nats-hub:8222/varz | jq ".server_name, .connections, .in_msgs, .o
 curl -s http://nats-hub-1:8222/routez | jq '.num_routes'
 curl -s http://nats-hub-2:8223/routez | jq '.num_routes'
 curl -s http://nats-hub-3:8224/routez | jq '.num_routes'
-
-# Leaf connections
-curl -s http://nats-hub-1:8222/leafz | jq '.leafnodes'
-curl -s http://nats-hub-2:8223/leafz | jq '.leafnodes'
-curl -s http://nats-hub-3:8224/leafz | jq '.leafnodes'
-```
-
-## Connection Details
-
-### Hub Access Points
-**nats-hub-1**: nats://hub_user:hub_password@nats-hub-1:4222
-**nats-hub-2**: nats://hub_user:hub_password@nats-hub-2:4223
-**nats-hub-3**: nats://hub_user:hub_password@nats-hub-3:4224
-
-### Leaf Access Points
-**leaf-1a**: nats://leaf_user:leaf_password@nats-leaf-1a:422
-**leaf-1b**: nats://leaf_user:leaf_password@nats-leaf-1b:4226
-**leaf-2a**: nats://leaf_user:leaf_password@nats-leaf-2a:4227
-**leaf-2b**: nats://leaf_user:leaf_password@nats-leaf-2b:4228
-
-## Service Ports
-
-### Hub Server (nats-hub)
-```yaml
-hub-1:  4222 (client), 6222 (cluster), 7422 (leafnode), 8222 (monitoring), 8442 (websocket)
-hub-2:  4223 (client), 6223 (cluster), 7423 (leafnode), 8223 (monitoring), 8443 (websocket)
-hub-3:  4224 (client), 6224 (cluster), 7424 (leafnode), 8224 (monitoring), 8444 (websocket)
-```
-### Leaf Server (nats-leaf)
-```yaml
-leaf-1a: 4225 (client), 6225 (cluster), 8225 (monitoring)
-leaf-1b: 4226 (client), 6226 (cluster), 8226 (monitoring)
-leaf-2a: 4227 (client), 6227 (cluster), 8227 (monitoring)
-leaf-2b: 4228 (client), 6228 (cluster), 8228 (monitoring)
 ```
 
 ## Troubleshooting
@@ -202,39 +341,3 @@ leaf-2b: 4228 (client), 6228 (cluster), 8228 (monitoring)
 1. **Connection refused**: Check firewall settings and port availability
 2. **Authentication failed**: Verify credentials in configuration files
 3. **Cluster formation issues**: Ensure all nodes can reach each other
-
-## Network Connectivity Diagram
-```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                           NATS Hub-Leaf Architecture                                │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-
-Hub Server                     Leaf Server 
-┌─────────────────────────┐                ┌─────────────────────────┐
-│     Hub Cluster         │                │      Leaf Nodes         │
-│                         │                │                         │
-│  ┌─────────────────┐    │                │  ┌─────────────────┐    │
-│  │   nats-hub      │    │                │  │  nats-leaf-1a   │    │
-│  │   Port: 4222    │    │                │  │  Port: 4225     │    │
-│  │   Leafnode:7422 │    │                │  │  Domain: leaf-1 │    │
-│  └─────────────────┘    │                │  └─────────────────┘    │
-│           │             │                │           │             │
-│  ┌─────────────────┐    │                │  ┌─────────────────┐    │
-│  │   nats-hub-2    │    │◄──────────────►│  │  nats-leaf-1b   │    │
-│  │   Port: 4223    │    │   Leafnode     │  │  Port: 4226     │    │
-│  │   Leafnode:7423 │    │   Connection   │  │  Domain: leaf-1 │    │
-│  └─────────────────┘    │                │  └─────────────────┘    │
-│           │             │                │           │             │
-│  ┌─────────────────┐    │                │  ┌─────────────────┐    │
-│  │   nats-hub-3    │    │                │  │  nats-leaf-2a   │    │
-│  │   Port: 4224    │    │                │  │  Port: 4227     │    │
-│  │   Leafnode:7424 │    │                │  │  Domain: leaf-2 │    │
-│  └─────────────────┘    │                │  └─────────────────┘    │
-│           │             │                │           │             │
-│     Cluster Routes      │                │  ┌─────────────────┐    │
-│   (6222, 6223, 6224)    │                │  │  nats-leaf-2b   │    │
-│                         │                │  │  Port: 4228     │    │
-│   JetStream Domain:     │                │  │  Domain: leaf-2 │    │
-│        "hub"            │                │  └─────────────────┘    │
-└─────────────────────────┘                └─────────────────────────┘
-```

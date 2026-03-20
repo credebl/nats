@@ -6,7 +6,11 @@ services:
     volumes:
       - ./leaf-1a.conf:/etc/nats/nats.conf
       - ./jetstream_1a_leaf:/data/jetstream
-    network_mode: host
+      - ./leaf_1_user.creds:/etc/nats/creds/exec_user.creds:ro
+    ports:
+      - "4225:4225"
+      - "8225:8225"
+      - "6225:6225"
     restart: unless-stopped
 
   leaf-1b:
@@ -16,7 +20,11 @@ services:
     volumes:
       - ./leaf-1b.conf:/etc/nats/nats.conf
       - ./jetstream_1b_leaf:/data/jetstream
-    network_mode: host
+      - ./leaf_1_user.creds:/etc/nats/creds/exec_user.creds:ro
+    ports:
+      - "4226:4226"
+      - "8226:8226"
+      - "6226:6226"
     restart: unless-stopped
 
   leaf-2a:
@@ -26,7 +34,11 @@ services:
     volumes:
       - ./leaf-2a.conf:/etc/nats/nats.conf
       - ./jetstream_2a_leaf:/data/jetstream
-    network_mode: host
+      - ./leaf_2_user.creds:/etc/nats/creds/exec_user.creds:ro
+    ports:
+      - "4227:4227"
+      - "8227:8227"
+      - "6227:6227"
     restart: unless-stopped
 
   leaf-2b:
@@ -36,5 +48,9 @@ services:
     volumes:
       - ./leaf-2b.conf:/etc/nats/nats.conf
       - ./jetstream_2b_leaf:/data/jetstream
-    network_mode: host
+      - ./leaf_2_user.creds:/etc/nats/creds/exec_user.creds:ro
+    ports:
+      - "4228:4228"
+      - "8228:8228"
+      - "6228:6228"
     restart: unless-stopped
