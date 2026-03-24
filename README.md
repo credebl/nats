@@ -142,6 +142,12 @@ After hub nodes are running, push all accounts and users from the NSC server:
 nsc push -A
 ```
 
+> **Note:** If you get an error while pushing, check that the NATS endpoint configured in the operator is correct. If the hub IP has changed, update it and retry:
+> ```bash
+> nsc edit operator --account-jwt-server-url "nats://<hub-node-ip>:4222"
+> nsc push -A
+> ```
+
 ---
 
 > **⚠️ Important: Backup NSC Server**
@@ -170,6 +176,12 @@ After creating a user, push to hub before deploying the leaf:
 ```bash
 nsc push -A
 ```
+
+> **Note:** If you get an error while pushing, check that the NATS endpoint configured in the operator is correct. If the hub IP has changed, update it and retry:
+> ```bash
+> nsc edit operator --account-jwt-server-url "nats://<hub-node-ip>:4222"
+> nsc push -A
+> ```
 
 ### Get Account JWT and Account ID for Leaf Config
 
