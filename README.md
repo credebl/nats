@@ -80,11 +80,111 @@ HUB_HOST_3=<hub-node-3-ip>
 LEAF_HOST_1=<leaf-node-1-ip>
 LEAF_HOST_2=<leaf-node-2-ip>
 ```
+
+## .env Configuration Reference
+
+Copy `setup/.env.example` to `setup/.env`.
+
+### Operator & Server
+
+| Variable | Description |
+|---|---|
+| `OPERATOR_NAME` | Name of the NSC operator to create. Used as the root trust anchor for all accounts.(In case of cluster get the URL of any one hub node) |
+| `NATS_SERVER_URL` | URL of any one hub NATS node or load balancer. e.g. `nats://10.0.0.101:4222` |
+
+### JetStream Subject Wildcards
+
+Before configuring permissions, understand the key JetStream internal subjects:
+
+```
+$JS.API.STREAM.>
+- Manage streams — create, update, delete, fetch stream info
+```
+
+```
+$JS.API.CONSUMER.>
+- Manage consumers — fetch consumer info, pull/push operations
+```
+
+```
+$JS.ACK.>
+- Send acknowledgements for messages. Required for message processing reliability
+```
+
+```
+$JS.API.CONSUMER.CREATE.<stream>.>
+- Create consumers specifically on `<stream>`
+- Use `ALLOW_CONSUMER_CREATE_STREAMS` / `DENY_CONSUMER_CREATE_STREAMS` to control this per stream
+```
+
+```
+_INBOX.>
+- NATS internal subject used for request-reply messaging
+- Any user that needs to send requests or receive replies must have _INBOX.> in both allow-pub and allow-sub
+- Always include _INBOX.> in HUB_ALLOW_PUB, HUB_ALLOW_SUB, LEAF_ALLOW_PUB, LEAF_ALLOW_SUB
+```
+
+### Hub — app_user permissions
+
+`app_user` is created on the hub account and used by hub-side services. Stream names are appended with `.>` automatically by the script.
+
+| Variable | Description | Example |
+|---|---|---|
+| `HUB_PUB_STREAMS` | Streams app_user can publish to. Script builds `<stream>.>` for each. | `streamA` |
+| `HUB_SUB_STREAMS` | Streams app_user can subscribe to. Script builds `<stream>.>` for each. | `aggregate,streamA` |
+| `HUB_ALLOW_CONSUMER_CREATE_STREAMS` | Streams where `$JS.API.CONSUMER.CREATE.<stream>.>` is allowed. | `aggregate` |
+| `HUB_DENY_CONSUMER_CREATE_STREAMS` | Streams where `$JS.API.CONSUMER.CREATE.<stream>.>` is denied. | `streamA` |
+| `HUB_ALLOW_PUB` | Extra base subjects always added to allow-pub. | `_INBOX.>` |
+| `HUB_ALLOW_SUB` | Extra base subjects always added to allow-sub. | `_INBOX.>` |
+| `HUB_DENY_PUB` | Subjects to explicitly block publishing. Leave empty if none. | `orders.internal.>` |
+| `HUB_DENY_SUB` | Subjects to explicitly block subscribing. Leave empty if none. | |
+
+**Deny example:**
+```env
+HUB_DENY_PUB=orders.internal.>
+```
+👉 Even if `orders.>` is allowed, `orders.internal.*` is blocked ❌
+
+### Hub — websocket_user permissions
+
+`websocket_user` is created on the hub account for WebSocket clients. `$JS.>` is always fully denied for this user regardless of other settings.
+
+| Variable | Description | Example |
+|---|---|---|
+| `WEBSOCKET_ALLOW_PUB` | Subjects websocket_user can publish to. | `user.ack,_INBOX.>` |
+| `WEBSOCKET_ALLOW_SUB` | Subjects websocket_user can subscribe to. | `did-notify.>,_INBOX.>` |
+| `WEBSOCKET_DENY_PUB` | Subjects to explicitly block publishing. Leave empty if none. | |
+| `WEBSOCKET_DENY_SUB` | Subjects to explicitly block subscribing. Leave empty if none. | |
+
+### Leaf — user permissions
+
+Per leaf node, `manage-users.sh` creates two users:
+- `exec_<username>` — connects the leaf NATS server to the hub
+- `<username>` — used by the verifier/service on the leaf side
+
+Stream names are appended with `.>` automatically by the script.
+
+| Variable | Description | Example |
+|---|---|---|
+| `LEAF_PUB_STREAMS` | Streams leaf user can publish to. Script builds `<stream>.>` for each. | `StreamB,StreamC` |
+| `LEAF_SUB_STREAMS` | Streams leaf user can subscribe to. Script builds `<stream>.>` for each. | `StreamB,StreamC` |
+| `LEAF_ALLOW_CONSUMER_CREATE_STREAMS` | Streams where `$JS.API.CONSUMER.CREATE.<stream>.>` is allowed. Leave empty if none. | |
+| `LEAF_DENY_CONSUMER_CREATE_STREAMS` | Streams where `$JS.API.CONSUMER.CREATE.<stream>.>` is denied. | `StreamB,StreamC` |
+| `LEAF_ALLOW_PUB` | Extra base subjects always added to allow-pub. | `_INBOX.>` |
+| `LEAF_ALLOW_SUB` | Extra base subjects always added to allow-sub. | `_INBOX.>` |
+| `LEAF_DENY_PUB` | Subjects to explicitly block publishing. Leave empty if none. | |
+| `LEAF_DENY_SUB` | Subjects to explicitly block subscribing. Leave empty if none. | |
+
+**Deny example:**
+```env
+LEAF_DENY_CONSUMER_CREATE_STREAMS=StreamB,StreamC
+```
+Leaf user cannot create consumers on `StreamB` or `StreamC` streams — blocks `$JS.API.CONSUMER.CREATE.StreamB.>` and `$JS.API.CONSUMER.CREATE.StreamC.>`
+
+---
 ## Hub Security Setup (NSC-based JWT Auth)
 
-### Step 1: Get Hub NATS URL
-
-Get the URL of any one hub node and update .env file:
+### Step 1: Check NATS URL
 
 ```bash
 # Direct node URL
@@ -219,6 +319,33 @@ After removal, push changes to hub:
 ```bash
 nsc push -A
 ```
+
+### Updating User Permissions
+
+To add or change permissions for an existing user:
+
+```bash
+# Add specific pub/sub subjects
+nsc edit user --account app <username> --allow-pub 'subject.>' --allow-sub 'subject.>'
+
+# Deny specific subjects
+nsc edit user --account app <username> --deny-pub 'subject.>' --deny-sub 'subject.>'
+
+# Grant full access (no restrictions)
+nsc edit user --account app <username> --allow-pub '>' --allow-sub '>'
+```
+
+After updating permissions, regenerate the creds file and redeploy it to the service using it:
+
+```bash
+# Regenerate creds
+nsc generate creds --account app --name <username> > <username>.creds
+
+# Push updated account to hub
+nsc push -A
+```
+
+> **Important:** After replacing the creds file, restart the service that uses it so it picks up the new credentials.
 
 ---
 

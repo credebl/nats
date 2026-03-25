@@ -45,22 +45,63 @@ nsc add user --account "$ACCOUNT_NAME" websocket_user
 # 6. Configure User Permissions
 echo -e "${GREEN}[6/9] Configuring user permissions${NC}"
 
+ALLOW_PUB=""
+ALLOW_SUB=""
+ALLOW_CONSUMER_CREATE=""
+DENY_CONSUMER_CREATE=""
+
+# Build PUB streams from HUB_PUB_STREAMS
+IFS=',' read -ra PUB_STREAMS <<< "$HUB_PUB_STREAMS"
+for STREAM in "${PUB_STREAMS[@]}"; do
+  STREAM=$(echo "$STREAM" | xargs)
+  ALLOW_PUB="${ALLOW_PUB:+${ALLOW_PUB},}${STREAM}.>"
+done
+
+# Build SUB streams from HUB_SUB_STREAMS
+IFS=',' read -ra SUB_STREAMS <<< "$HUB_SUB_STREAMS"
+for STREAM in "${SUB_STREAMS[@]}"; do
+  STREAM=$(echo "$STREAM" | xargs)
+  ALLOW_SUB="${ALLOW_SUB:+${ALLOW_SUB},}${STREAM}.>"
+done
+
+# Build ALLOW_CONSUMER_CREATE from HUB_ALLOW_CONSUMER_CREATE_STREAMS
+IFS=',' read -ra ALLOW_CONSUMER_STREAMS <<< "$HUB_ALLOW_CONSUMER_CREATE_STREAMS"
+for STREAM in "${ALLOW_CONSUMER_STREAMS[@]}"; do
+  STREAM=$(echo "$STREAM" | xargs)
+  ALLOW_CONSUMER_CREATE="${ALLOW_CONSUMER_CREATE}\$JS.API.CONSUMER.CREATE.${STREAM}.>,"
+done
+
+# Build DENY_CONSUMER_CREATE from HUB_DENY_CONSUMER_CREATE_STREAMS
+IFS=',' read -ra DENY_STREAMS <<< "$HUB_DENY_CONSUMER_CREATE_STREAMS"
+for STREAM in "${DENY_STREAMS[@]}"; do
+  STREAM=$(echo "$STREAM" | xargs)
+  DENY_CONSUMER_CREATE="${DENY_CONSUMER_CREATE}\$JS.API.CONSUMER.CREATE.${STREAM}.>,"
+done
+
+# Add base permissions from env vars
+ALLOW_PUB="${HUB_ALLOW_PUB:+${HUB_ALLOW_PUB},}${ALLOW_PUB}"
+ALLOW_SUB="${HUB_ALLOW_SUB:+${HUB_ALLOW_SUB},}${ALLOW_SUB}"
+ALLOW_CONSUMER_CREATE=${ALLOW_CONSUMER_CREATE%,}
+DENY_CONSUMER_CREATE=${DENY_CONSUMER_CREATE%,}
+
 # app_user permissions
 nsc edit user app_user --account "$ACCOUNT_NAME" \
   --allow-pubsub '$JS.API.STREAM.>' \
   --allow-pubsub '$JS.API.CONSUMER.>' \
-  --allow-pub "did-notify.>,_INBOX.>" \
-  --allow-sub "aggregate.>,did-notify.>,_INBOX.>"
-
-nsc edit user app_user --account "$ACCOUNT_NAME" \
-  --allow-pubsub '$JS.API.CONSUMER.CREATE.aggregate.>' \
   --allow-pubsub '$JS.ACK.>' \
-  --deny-pub "aggregate.>"
+  --allow-pub "$ALLOW_PUB" \
+  --allow-sub "$ALLOW_SUB" \
+  ${ALLOW_CONSUMER_CREATE:+--allow-pubsub "$ALLOW_CONSUMER_CREATE"} \
+  ${HUB_DENY_PUB:+--deny-pub "$HUB_DENY_PUB"} \
+  ${HUB_DENY_SUB:+--deny-sub "$HUB_DENY_SUB"} \
+  ${DENY_CONSUMER_CREATE:+--deny-pubsub "$DENY_CONSUMER_CREATE"}
 
 # websocket_user permissions
 nsc edit user websocket_user --account "$ACCOUNT_NAME" \
-  --allow-pub "user.ack,_INBOX.>" \
-  --allow-sub "did.>,_INBOX.>" \
+  --allow-pub "${WEBSOCKET_ALLOW_PUB}" \
+  --allow-sub "${WEBSOCKET_ALLOW_SUB}" \
+  ${WEBSOCKET_DENY_PUB:+--deny-pub "$WEBSOCKET_DENY_PUB"} \
+  ${WEBSOCKET_DENY_SUB:+--deny-sub "$WEBSOCKET_DENY_SUB"} \
   --deny-pubsub '$JS.>'
 
 # 7. Generate Credentials

@@ -29,15 +29,55 @@ if [ "$CHOICE" == "1" ]; then
   nsc add user --account "$ACCOUNT_NAME" "$USERNAME"
   nsc add user --account "$ACCOUNT_NAME" "exec_${USERNAME}"
 
+  ALLOW_PUB=""
+  ALLOW_SUB=""
+  ALLOW_CONSUMER_CREATE=""
+  DENY_CONSUMER_CREATE=""
+
+  # Build PUB streams from LEAF_PUB_STREAMS
+  IFS=',' read -ra PUB_STREAMS <<< "$LEAF_PUB_STREAMS"
+  for STREAM in "${PUB_STREAMS[@]}"; do
+    STREAM=$(echo "$STREAM" | xargs)
+    ALLOW_PUB="${ALLOW_PUB:+${ALLOW_PUB},}${STREAM}.>"
+  done
+
+  # Build SUB streams from LEAF_SUB_STREAMS
+  IFS=',' read -ra SUB_STREAMS <<< "$LEAF_SUB_STREAMS"
+  for STREAM in "${SUB_STREAMS[@]}"; do
+    STREAM=$(echo "$STREAM" | xargs)
+    ALLOW_SUB="${ALLOW_SUB:+${ALLOW_SUB},}${STREAM}.>"
+  done
+
+  # Build ALLOW_CONSUMER_CREATE from LEAF_ALLOW_CONSUMER_CREATE_STREAMS
+  IFS=',' read -ra ALLOW_CONSUMER_STREAMS <<< "$LEAF_ALLOW_CONSUMER_CREATE_STREAMS"
+  for STREAM in "${ALLOW_CONSUMER_STREAMS[@]}"; do
+    STREAM=$(echo "$STREAM" | xargs)
+    ALLOW_CONSUMER_CREATE="${ALLOW_CONSUMER_CREATE}\$JS.API.CONSUMER.CREATE.${STREAM}.>,"
+  done
+
+  # Build DENY_CONSUMER_CREATE from LEAF_DENY_CONSUMER_CREATE_STREAMS
+  IFS=',' read -ra DENY_STREAMS <<< "$LEAF_DENY_CONSUMER_CREATE_STREAMS"
+  for STREAM in "${DENY_STREAMS[@]}"; do
+    STREAM=$(echo "$STREAM" | xargs)
+    DENY_CONSUMER_CREATE="${DENY_CONSUMER_CREATE}\$JS.API.CONSUMER.CREATE.${STREAM}.>,"
+  done
+
+  # Add base permissions from env vars
+  ALLOW_PUB="${LEAF_ALLOW_PUB:+${LEAF_ALLOW_PUB},}${ALLOW_PUB}"
+  ALLOW_SUB="${LEAF_ALLOW_SUB:+${LEAF_ALLOW_SUB},}${ALLOW_SUB}"
+  ALLOW_CONSUMER_CREATE=${ALLOW_CONSUMER_CREATE%,}
+  DENY_CONSUMER_CREATE=${DENY_CONSUMER_CREATE%,}
+
   echo -e "${GREEN}Configuring permissions for $USERNAME${NC}"
   nsc edit user "$USERNAME" --account "$ACCOUNT_NAME" \
     --allow-pubsub '$JS.API.>' \
-    --allow-pub "notify.>,presentation.>,_INBOX.>" \
-    --allow-sub "notify.>,presentation.>,_INBOX.>"
-
-  nsc edit user "$USERNAME" --account "$ACCOUNT_NAME" \
     --allow-pubsub '$JS.ACK.>' \
-    --deny-pubsub '$JS.API.CONSUMER.CREATE.notify.>'
+    --allow-pub "$ALLOW_PUB" \
+    --allow-sub "$ALLOW_SUB" \
+    ${ALLOW_CONSUMER_CREATE:+--allow-pubsub "$ALLOW_CONSUMER_CREATE"} \
+    ${LEAF_DENY_PUB:+--deny-pub "$LEAF_DENY_PUB"} \
+    ${LEAF_DENY_SUB:+--deny-sub "$LEAF_DENY_SUB"} \
+    ${DENY_CONSUMER_CREATE:+--deny-pubsub "$DENY_CONSUMER_CREATE"}
 
   echo -e "${GREEN}Generating credentials${NC}"
   mkdir -p "${OUTPUT_DIR}/${USERNAME}"
