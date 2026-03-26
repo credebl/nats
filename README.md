@@ -91,6 +91,8 @@ Copy `setup/.env.example` to `setup/.env`.
 |---|---|
 | `OPERATOR_NAME` | Name of the NSC operator to create. Used as the root trust anchor for all accounts.(In case of cluster get the URL of any one hub node) |
 | `NATS_SERVER_URL` | URL of any one hub NATS node or load balancer. e.g. `nats://10.0.0.101:4222` |
+| `HUB_USERNAME` | Name of the hub app user created by `setup-nats.sh`. Used by hub-side services. e.g. `app_user` |
+| `HUB_WEBSOCKET_USERNAME` | Name of the hub websocket user created by `setup-nats.sh`. Used by WebSocket clients. e.g. `websocket_user` |
 
 ### JetStream Subject Wildcards
 

@@ -39,8 +39,8 @@ nsc edit account "$ACCOUNT_NAME" --js-disk-storage -1 --js-mem-storage -1 --js-s
 
 # 5. Create Users
 echo -e "${GREEN}[5/9] Creating users${NC}"
-nsc add user --account "$ACCOUNT_NAME" app_user
-nsc add user --account "$ACCOUNT_NAME" websocket_user
+nsc add user --account "$ACCOUNT_NAME" "$HUB_USERNAME"
+nsc add user --account "$ACCOUNT_NAME" "$HUB_WEBSOCKET_USERNAME"
 
 # 6. Configure User Permissions
 echo -e "${GREEN}[6/9] Configuring user permissions${NC}"
@@ -85,7 +85,7 @@ ALLOW_CONSUMER_CREATE=${ALLOW_CONSUMER_CREATE%,}
 DENY_CONSUMER_CREATE=${DENY_CONSUMER_CREATE%,}
 
 # app_user permissions
-nsc edit user app_user --account "$ACCOUNT_NAME" \
+nsc edit user "$HUB_USERNAME" --account "$ACCOUNT_NAME" \
   --allow-pubsub '$JS.API.STREAM.>' \
   --allow-pubsub '$JS.API.CONSUMER.>' \
   --allow-pubsub '$JS.ACK.>' \
@@ -97,7 +97,7 @@ nsc edit user app_user --account "$ACCOUNT_NAME" \
   ${DENY_CONSUMER_CREATE:+--deny-pubsub "$DENY_CONSUMER_CREATE"}
 
 # websocket_user permissions
-nsc edit user websocket_user --account "$ACCOUNT_NAME" \
+nsc edit user "$HUB_WEBSOCKET_USERNAME" --account "$ACCOUNT_NAME" \
   --allow-pub "${WEBSOCKET_ALLOW_PUB}" \
   --allow-sub "${WEBSOCKET_ALLOW_SUB}" \
   ${WEBSOCKET_DENY_PUB:+--deny-pub "$WEBSOCKET_DENY_PUB"} \
@@ -106,8 +106,8 @@ nsc edit user websocket_user --account "$ACCOUNT_NAME" \
 
 # 7. Generate Credentials
 echo -e "${GREEN}[7/9] Generating credential files${NC}"
-nsc generate creds --account "$ACCOUNT_NAME" --name app_user > app_user.creds
-nsc generate creds --account "$ACCOUNT_NAME" --name websocket_user > websocket_user.creds
+nsc generate creds --account "$ACCOUNT_NAME" --name "$HUB_USERNAME" > "${HUB_USERNAME}.creds"
+nsc generate creds --account "$ACCOUNT_NAME" --name "$HUB_WEBSOCKET_USERNAME" > "${HUB_WEBSOCKET_USERNAME}.creds"
 
 # 8. Generate Resolver Configuration
 echo -e "${GREEN}[8/9] Generating resolver configuration${NC}"
