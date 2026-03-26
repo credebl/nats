@@ -74,10 +74,10 @@ if [ "$CHOICE" == "1" ]; then
     --allow-pubsub '$JS.ACK.>' \
     --allow-pub "$ALLOW_PUB" \
     --allow-sub "$ALLOW_SUB" \
-    ${ALLOW_CONSUMER_CREATE:+--allow-pubsub "$ALLOW_CONSUMER_CREATE"} \
+    ${ALLOW_CONSUMER_CREATE:+--allow-pub "$ALLOW_CONSUMER_CREATE"} \
     ${LEAF_DENY_PUB:+--deny-pub "$LEAF_DENY_PUB"} \
     ${LEAF_DENY_SUB:+--deny-sub "$LEAF_DENY_SUB"} \
-    ${DENY_CONSUMER_CREATE:+--deny-pubsub "$DENY_CONSUMER_CREATE"}
+    ${DENY_CONSUMER_CREATE:+--deny-pub "$DENY_CONSUMER_CREATE"}
 
   echo -e "${GREEN}Generating credentials${NC}"
   mkdir -p "${OUTPUT_DIR}/${USERNAME}"

@@ -91,10 +91,10 @@ nsc edit user "$HUB_USERNAME" --account "$ACCOUNT_NAME" \
   --allow-pubsub '$JS.ACK.>' \
   --allow-pub "$ALLOW_PUB" \
   --allow-sub "$ALLOW_SUB" \
-  ${ALLOW_CONSUMER_CREATE:+--allow-pubsub "$ALLOW_CONSUMER_CREATE"} \
+  ${ALLOW_CONSUMER_CREATE:+--allow-pub "$ALLOW_CONSUMER_CREATE"} \
   ${HUB_DENY_PUB:+--deny-pub "$HUB_DENY_PUB"} \
   ${HUB_DENY_SUB:+--deny-sub "$HUB_DENY_SUB"} \
-  ${DENY_CONSUMER_CREATE:+--deny-pubsub "$DENY_CONSUMER_CREATE"}
+  ${DENY_CONSUMER_CREATE:+--deny-pub "$DENY_CONSUMER_CREATE"}
 
 # websocket_user permissions
 WS_ALLOW_PUB=""
@@ -134,10 +134,10 @@ WS_DENY_CONSUMER_CREATE=${WS_DENY_CONSUMER_CREATE%,}
 nsc edit user "$HUB_WEBSOCKET_USERNAME" --account "$ACCOUNT_NAME" \
   --allow-pub "$WS_ALLOW_PUB" \
   --allow-sub "$WS_ALLOW_SUB" \
-  ${WS_ALLOW_CONSUMER_CREATE:+--allow-pubsub "$WS_ALLOW_CONSUMER_CREATE"} \
+  ${WS_ALLOW_CONSUMER_CREATE:+--allow-pub "$WS_ALLOW_CONSUMER_CREATE"} \
   ${WEBSOCKET_DENY_PUB:+--deny-pub "$WEBSOCKET_DENY_PUB"} \
   ${WEBSOCKET_DENY_SUB:+--deny-sub "$WEBSOCKET_DENY_SUB"} \
-  ${WS_DENY_CONSUMER_CREATE:+--deny-pubsub "$WS_DENY_CONSUMER_CREATE"} 
+  ${WS_DENY_CONSUMER_CREATE:+--deny-pub "$WS_DENY_CONSUMER_CREATE"} 
   
 # 7. Generate Credentials
 echo -e "${GREEN}[7/9] Generating credential files${NC}"
@@ -154,7 +154,7 @@ ACCOUNT_ID=$(nsc describe account "$ACCOUNT_NAME" | awk -F'|' '/Account ID/ {gsu
 ACCOUNT_JWT=$(nsc describe account "$ACCOUNT_NAME" --raw)
 
 # Save app.jwt with account ID and JWT
-cat > app.jwt << EOF
+cat > $ACCOUNT_NAME.jwt << EOF
 # Account: $ACCOUNT_NAME
 # Account ID: $ACCOUNT_ID
 # Generated: $(date)

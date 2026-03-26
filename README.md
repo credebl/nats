@@ -191,7 +191,7 @@ Leaf user cannot create consumers on `StreamB` or `StreamC` streams — blocks `
 ---
 ## Hub Security Setup (NSC-based JWT Auth)
 
-### Step 1: Check NATS URL
+### Step 1: Check .env file
 
 ```bash
 # Direct node URL
@@ -199,11 +199,7 @@ NATS_URL=nats://<hub-node-1-ip>:4222
 
 # Or via load balancer (VPC-internal only)
 NATS_URL=nats://<load-balancer-ip>:4222
-```
 
-Add to `.env`:
-```env
-NATS_URL=nats://<hub-node-ip>:4222
 OPERATOR_NAME=myoperator
 ```
 
@@ -215,6 +211,16 @@ cd setup
 ```
 
 This creates the operator, system account, and initial accounts/users.
+
+All files are generated in `setup/nats-output/`:
+
+| File | Used In |
+|---|---|
+| `resolver.conf` | Copy `operator`, `system_account`, and `resolver_preload` blocks into all 3 hub node config files (`hub-1.conf`, `hub-2.conf`, `hub-3.conf`) |
+| `<HUB_USERNAME>.creds` | Used by hub-side services to connect to the hub NATS server |
+| `<HUB_WEBSOCKET_USERNAME>.creds` | Used by WebSocket clients to connect to the hub NATS server |
+| `<HUB_ACCOUNT_NAME>.jwt` | Contains account ID and account JWT — used to update leaf node config (`resolver_preload`) |
+
 ### Step 3: Update Hub NATS Config
 
 After running `setup.sh`, copy the following blocks from the generated `resolver.conf` into each of the 3 hub node config files (`nats-hub-1.conf`, `nats-hub-2.conf`, `nats-hub-3.conf`):
@@ -222,15 +228,15 @@ After running `setup.sh`, copy the following blocks from the generated `resolver
 ```
 operator: <operator-jwt>
 
-system_account: <system-id>
+system_account: <system-account-id>
 
 resolver_preload: {
-  <system-id>: <system-jwt>
+  <system-account-id>: <system-jwt>
   ...
 }
 ```
 
-> Reference the `nats.config` file in the repo for the exact placement of these blocks.
+> Reference the nats config file(hub.conf) in the repo for the exact placement of these blocks.
 
 Repeat for all 3 hub node config files.
 
@@ -239,6 +245,8 @@ Repeat for all 3 hub node config files.
 ```bash
 cd nats/hub
 docker-compose up -d
+
+docker logs -f nats-hub-1 # Check logs of service if everything is working fine.
 ```
 
 ### Step 5: Push Accounts to Hub
