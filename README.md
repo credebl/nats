@@ -313,6 +313,56 @@ cd nats/leaf
 docker compose up -d
 ```
 
+### Update Aggregate Stream on Hub for New Leaf Domain
+
+When a new leaf node is added with a new JetStream domain (e.g. `leaf-3`), the aggregate stream on the hub must be updated to include the new domain as a source.
+
+**Step 1: Export current aggregate stream config**
+```bash
+nats --context hub stream info aggregate --json > aggregate.json
+```
+
+**Step 2: Edit `aggregate.json` — add the new leaf domain to the `sources` array**
+```json
+{
+  "name": "<stream-name>",
+  "external": {
+    "api": "$JS.leaf-3.API",
+    "deliver": ""
+  }
+}
+```
+
+The full `sources` array should list all leaf domains including the new one:
+```json
+"sources": [
+  {
+    "name": "<stream-name>",
+    "external": { "api": "$JS.leaf-1.API", "deliver": "" }
+  },
+  {
+    "name": "<stream-name>",
+    "external": { "api": "$JS.leaf-2.API", "deliver": "" }
+  },
+  {
+    "name": "<stream-name>",
+    "external": { "api": "$JS.leaf-3.API", "deliver": "" }
+  }
+]
+```
+
+**Step 3: Apply the updated config**
+```bash
+nats --context hub stream edit aggregate --config aggregate.json
+```
+
+**Step 4: Verify the stream now shows all sources**
+```bash
+nats --context hub stream info aggregate
+```
+
+> **Note:** Exporting and re-applying the full config is the safest approach — it preserves all existing sources and settings without accidentally overwriting them.
+
 ### Remove a User
 
 ```bash
