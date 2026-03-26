@@ -6,7 +6,7 @@ set -e
 source .env
 
 # Configuration
-ACCOUNT_NAME="app"
+ACCOUNT_NAME="$HUB_ACCOUNT_NAME"
 OUTPUT_DIR="./nats-output"
 
 # Colors for output
@@ -150,7 +150,7 @@ nsc generate config --nats-resolver --sys-account SYS > resolver.conf
 
 # 9. Generate Account JWT
 echo -e "${GREEN}[9/9] Generating account JWT${NC}"
-ACCOUNT_ID=$(nsc describe account app | awk -F'|' '/Account ID/ {gsub(/ /,"",$3); print $3}')
+ACCOUNT_ID=$(nsc describe account "$ACCOUNT_NAME" | awk -F'|' '/Account ID/ {gsub(/ /,"",$3); print $3}')
 ACCOUNT_JWT=$(nsc describe account "$ACCOUNT_NAME" --raw)
 
 # Save app.jwt with account ID and JWT

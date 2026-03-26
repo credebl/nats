@@ -93,6 +93,7 @@ Copy `setup/.env.example` to `setup/.env`.
 | `NATS_SERVER_URL` | URL of any one hub NATS node or load balancer. e.g. `nats://10.0.0.101:4222` |
 | `HUB_USERNAME` | Name of the hub app user created by `setup-nats.sh`. Used by hub-side services. e.g. `app_user` |
 | `HUB_WEBSOCKET_USERNAME` | Name of the hub websocket user created by `setup-nats.sh`. Used by WebSocket clients. e.g. `websocket_user` |
+| `HUB_ACCOUNT_NAME` | Name of the NSC account created. e.g. `app` |
 
 ### JetStream Subject Wildcards
 

@@ -4,7 +4,7 @@ set -e
 
 source .env
 
-ACCOUNT_NAME="app"
+ACCOUNT_NAME="$HUB_ACCOUNT_NAME"
 OUTPUT_DIR="./nats-output"
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
