@@ -153,8 +153,12 @@ HUB_DENY_PUB=orders.internal.>
 
 | Variable | Description | Example |
 |---|---|---|
-| `WEBSOCKET_ALLOW_PUB` | Subjects websocket_user can publish to. | `user.ack,_INBOX.>` |
-| `WEBSOCKET_ALLOW_SUB` | Subjects websocket_user can subscribe to. | `did-notify.>,_INBOX.>` |
+| `WEBSOCKET_PUB_STREAMS` | Streams websocket_user can publish to. Script builds `<stream>.>` for each. | `user-events` |
+| `WEBSOCKET_SUB_STREAMS` | Streams websocket_user can subscribe to. Script builds `<stream>.>` for each. | `did-notify` |
+| `WEBSOCKET_ALLOW_CONSUMER_CREATE_STREAMS` | Streams where `$JS.API.CONSUMER.CREATE.<stream>.>` is allowed. Leave empty if none. | |
+| `WEBSOCKET_DENY_CONSUMER_CREATE_STREAMS` | Streams where `$JS.API.CONSUMER.CREATE.<stream>.>` is denied. | `did-notify` |
+| `WEBSOCKET_ALLOW_PUB` | Extra base subjects always added to allow-pub. | `user.ack,_INBOX.>` |
+| `WEBSOCKET_ALLOW_SUB` | Extra base subjects always added to allow-sub. | `_INBOX.>` |
 | `WEBSOCKET_DENY_PUB` | Subjects to explicitly block publishing. Leave empty if none. | |
 | `WEBSOCKET_DENY_SUB` | Subjects to explicitly block subscribing. Leave empty if none. | |
 
