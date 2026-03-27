@@ -207,6 +207,7 @@ OPERATOR_NAME=myoperator
 
 ```bash
 cd setup
+chmod +x setup-nats.sh
 ./setup-nats.sh
 ```
 
@@ -231,7 +232,7 @@ operator: <operator-jwt>
 system_account: <system-account-id>
 
 resolver_preload: {
-  <system-account-id>: <system-jwt>
+  <system-account-id>: <system-account-jwt>
   ...
 }
 ```
@@ -275,7 +276,8 @@ nsc push -A
 Use the `manage-user.sh` script. When prompted, choose **create**:
 
 ```bash
-./manage-user.sh
+chmod +x manage-users.sh
+./manage-users.sh
 # Select: create
 # Provide: leaf node name (e.g., leaf_blr)
 ```
@@ -294,19 +296,29 @@ nsc push -A
 
 > **Note:** If you get an error while pushing, check that the NATS endpoint configured in the operator is correct. If the hub IP has changed, update it and retry:
 > ```bash
+> nsc list operator # Check if operator you created is selected (will appear in bold text)
 > nsc edit operator --account-jwt-server-url "nats://<hub-node-ip>:4222"
 > nsc push -A
 > ```
 
 ### Get Account JWT and Account ID for Leaf Config
 
-After pushing, retrieve the account JWT and account ID from the NSC-generated files under nats username folder and update the leaf node's NATS config.
+After pushing, retrieve the account_JWT, account_ID and operatorId and jwts from the NSC-generated files under nats-output ACCOUNT_NAME.jwt and resolver.config file and update the leaf node's NATS config.
 
-Update the leaf node config with:
+For the credential file, update the creds file used in the leaf `docker-compose.yml`. For example, if you create a user `star`, two files will be generated: `star.creds` and `exec_star.creds`.
+
+- `exec_star.creds` — used by the leaf NATS server to connect to the hub. Copy its contents into the `.creds` file referenced in the leaf `docker-compose.yml` (e.g. `leaf_1_user.creds`).
+- `star.creds` — used by the service running on the leaf side.
+
+Update the below leaf node config:
 ```
-operator: <operator-jwt>
-system_account: <system-account-public-key>
+account: "<APP_ACCOUNT_ID>" # In Leafnode Configuration block
+credentials: 
+
+operator: <operator-jwt>  # Same as used in nats-hub.conf
+system_account: <system-account-id> # Same as used in nats-hub.conf
 resolver_preload: {
+  <system-account-id>: <system-account-jwt> # Same as used in nats-hub.conf
   <account-id>: <account-jwt>
 }
 ```
@@ -320,6 +332,8 @@ resolver_preload: {
 ```bash
 cd nats/leaf
 docker compose up -d
+
+docker logs -f nats-hub-1 # Check logs of service if everything is working fine.
 ```
 
 ### Update Aggregate Stream on Hub for New Leaf Domain
@@ -328,7 +342,7 @@ When a new leaf node is added with a new JetStream domain (e.g. `leaf-3`), the a
 
 **Step 1: Export current aggregate stream config**
 ```bash
-nats --context hub stream info aggregate --json > aggregate.json
+nats --context=hub stream info aggregate --json > aggregate.json
 ```
 
 **Step 2: Edit `aggregate.json` — add the new leaf domain to the `sources` array**
@@ -336,7 +350,7 @@ nats --context hub stream info aggregate --json > aggregate.json
 {
   "name": "<stream-name>",
   "external": {
-    "api": "$JS.leaf-3.API",
+    "api": "$JS.<domain_name_for_leaf>.API",
     "deliver": ""
   }
 }
@@ -375,7 +389,8 @@ nats --context hub stream info aggregate
 ### Remove a User
 
 ```bash
-./manage-user.sh
+chmod +x manage-users.sh
+./manage-users.sh
 # Select: remove
 # Provide: leaf node name to remove
 ```
