@@ -279,12 +279,12 @@ Use the `manage-user.sh` script. When prompted, choose **create**:
 chmod +x manage-users.sh
 ./manage-users.sh
 # Select: create
-# Provide: leaf node name (e.g., leaf_blr)
+# Provide: leaf node name (e.g., leaf_star)
 ```
 
 This creates **two users** per leaf node:
-- **exec_leaf_blr user** — used for connecting the leaf node to the hub
-- **leaf_blr user** — used by the verifier service on the leaf
+- **exec_leaf_star user** — used for connecting the leaf node to the hub
+- **leaf_star user** — used by the verifier service on the leaf
 
 ### Push New Accounts to Hub
 

@@ -5,6 +5,14 @@ set -euo pipefail
 : "${S3_BUCKET:?S3_BUCKET is required}"
 : "${RESTORE_DATE:?RESTORE_DATE is required}"
 
+if [ -n "${NATS_CREDS_FILE:-}" ]; then
+  NATS_AUTH="--creds ${NATS_CREDS_FILE}"
+elif [ -n "${NATS_USER:-}" ] && [ -n "${NATS_PASSWORD:-}" ]; then
+  NATS_AUTH="--user ${NATS_USER} --password ${NATS_PASSWORD}"
+else
+  NATS_AUTH=""
+fi
+
 RESTORE_DIR="/restore/${RESTORE_DATE}"
 S3_PREFIX="jetstream"
 
@@ -32,12 +40,12 @@ for stream_dir in "${RESTORE_DIR}"/*; do
   echo "Restoring stream: ${STREAM_NAME}"
 
   # Delete existing stream if present
-  if nats --server "${NATS_URL}" stream info "${STREAM_NAME}" >/dev/null 2>&1; then
+  if nats --server "${NATS_URL}" ${NATS_AUTH} stream info "${STREAM_NAME}" >/dev/null 2>&1; then
     echo "Stream ${STREAM_NAME} already exists, deleting..."
-    nats --server "${NATS_URL}" stream rm "${STREAM_NAME}" -f
+    nats --server "${NATS_URL}" ${NATS_AUTH} stream rm "${STREAM_NAME}" -f
   fi
 
-  nats --server "${NATS_URL}" stream restore "${stream_dir}"
+  nats --server "${NATS_URL}" ${NATS_AUTH} stream restore "${stream_dir}"
 done
 
 echo "JetStream restore completed successfully"
