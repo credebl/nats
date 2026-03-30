@@ -27,30 +27,30 @@ services:
       - "6226:6226"
     restart: unless-stopped
 
-  leaf-2a:
-    image: nats:2.12.4
-    container_name: nats-leaf-2a
-    command: ["-c", "/etc/nats/nats.conf"]
-    volumes:
-      - ./leaf-2a.conf:/etc/nats/nats.conf
-      - ./jetstream_2a_leaf:/data/jetstream
-      - ./leaf_2_user.creds:/etc/nats/creds/exec_user.creds:ro
-    ports:
-      - "4227:4227"
-      - "8227:8227"
-      - "6227:6227"
-    restart: unless-stopped
+  # leaf-2a:
+  #   image: nats:2.12.4
+  #   container_name: nats-leaf-2a
+  #   command: ["-c", "/etc/nats/nats.conf"]
+  #   volumes:
+  #     - ./leaf-2a.conf:/etc/nats/nats.conf
+  #     - ./jetstream_2a_leaf:/data/jetstream
+  #     - ./leaf_2_user.creds:/etc/nats/creds/exec_user.creds:ro
+  #   ports:
+  #     - "4227:4227"
+  #     - "8227:8227"
+  #     - "6227:6227"
+  #   restart: unless-stopped
 
-  leaf-2b:
-    image: nats:2.12.4
-    container_name: nats-leaf-2b
-    command: ["-c", "/etc/nats/nats.conf"]
-    volumes:
-      - ./leaf-2b.conf:/etc/nats/nats.conf
-      - ./jetstream_2b_leaf:/data/jetstream
-      - ./leaf_2_user.creds:/etc/nats/creds/exec_user.creds:ro
-    ports:
-      - "4228:4228"
-      - "8228:8228"
-      - "6228:6228"
-    restart: unless-stopped
+  # leaf-2b:
+  #   image: nats:2.12.4
+  #   container_name: nats-leaf-2b
+  #   command: ["-c", "/etc/nats/nats.conf"]
+  #   volumes:
+  #     - ./leaf-2b.conf:/etc/nats/nats.conf
+  #     - ./jetstream_2b_leaf:/data/jetstream
+  #     - ./leaf_2_user.creds:/etc/nats/creds/exec_user.creds:ro
+  #   ports:
+  #     - "4228:4228"
+  #     - "8228:8228"
+  #     - "6228:6228"
+  #   restart: unless-stopped
