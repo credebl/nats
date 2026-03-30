@@ -102,6 +102,6 @@ fi
 
 read -rp "Push accounts to NATS server now? (nsc push -A) [y/N]: " PUSH
 if [ "$PUSH" == "y" ] || [ "$PUSH" == "Y" ]; then
-  nsc push -A --account "$ACCOUNT_NAME" -u "$NATS_SERVER_URL"
+  nsc push --account "$ACCOUNT_NAME" -u "$NATS_SERVER_URL"
   echo -e "${GREEN}✓ Pushed to $NATS_SERVER_URL${NC}"
 fi
