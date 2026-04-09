@@ -1,0 +1,48 @@
+services:
+  hub:
+    image: nats:2.12.4
+    container_name: nats-hub-1
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./hub-1.conf:/etc/nats/nats.conf
+      - ./jetstream_store_1:/data/jetstream
+      - ./jwt_1:/data/jwt
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "7422:7422"
+      - "8442:8442"
+      - "6222:6222"
+    restart: unless-stopped
+
+  hub-2:
+    image: nats:2.12.4
+    container_name: nats-hub-2
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./hub-2.conf:/etc/nats/nats.conf
+      - ./jetstream_store_2:/data/jetstream
+      - ./jwt_2:/data/jwt
+    ports:
+      - "4223:4223"
+      - "8223:8223"
+      - "7423:7423"
+      - "8443:8443"
+      - "6223:6223"
+    restart: unless-stopped
+
+  hub-3:
+    image: nats:2.12.4
+    container_name: nats-hub-3
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./hub-3.conf:/etc/nats/nats.conf
+      - ./jetstream_store_3:/data/jetstream
+      - ./jwt_3:/data/jwt
+    ports:
+      - "4224:4224"
+      - "8224:8224"
+      - "7424:7424"
+      - "8444:8444"
+      - "6224:6224"
+    restart: unless-stopped
